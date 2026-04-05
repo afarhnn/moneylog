@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { getTransactions, createTransaction, updateTransaction, deleteTransaction } from '../services/api'
-
+import { getTransactions, createTransaction, updateTransaction, deleteTransaction, getAIInsight } from '../services/api'
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1']
 
 export default function Dashboard() {
@@ -21,6 +20,8 @@ export default function Dashboard() {
   const [filterTipe, setFilterTipe] = useState('semua')
   const [filterKategori, setFilterKategori] = useState('')
   const [filterCari, setFilterCari] = useState('')
+  const [aiInsight, setAiInsight] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
 
   useEffect(() => {
     fetchTransactions()
@@ -89,6 +90,18 @@ export default function Dashboard() {
     setEditId(null)
     setForm({ judul: '', nominal: '', tipe: 'pengeluaran', kategori: '', catatan: '' })
   }
+
+  const fetchAIInsight = async () => {
+  setAiLoading(true)
+  try {
+    const res = await getAIInsight()
+    setAiInsight(res.data.insight)
+  } catch {
+    setAiInsight('Gagal memuat insight. Coba lagi.')
+  } finally {
+    setAiLoading(false)
+  }
+}
 
   // Logic filter
   const filteredTransactions = transactions
@@ -172,21 +185,27 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab('transaksi')}
-            className={`px-4 py-2 rounded-lg transition ${activeTab === 'transaksi' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
-          >
-            📋 Transaksi
-          </button>
-          <button
-            onClick={() => setActiveTab('grafik')}
-            className={`px-4 py-2 rounded-lg transition ${activeTab === 'grafik' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
-          >
-            📊 Grafik
-          </button>
-        </div>
+       {/* Tabs */}
+<div className="flex gap-2 mb-6">
+  <button
+    onClick={() => setActiveTab('transaksi')}
+    className={`px-4 py-2 rounded-lg transition ${activeTab === 'transaksi' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+  >
+    📋 Transaksi
+  </button>
+  <button
+    onClick={() => setActiveTab('grafik')}
+    className={`px-4 py-2 rounded-lg transition ${activeTab === 'grafik' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+  >
+    📊 Grafik
+  </button>
+  <button
+    onClick={() => setActiveTab('ai')}
+    className={`px-4 py-2 rounded-lg transition ${activeTab === 'ai' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+  >
+    🤖 AI Insight
+  </button>
+</div>
 
         {/* Tab Transaksi */}
         {activeTab === 'transaksi' && (
@@ -423,6 +442,45 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      {/* Tab AI */}
+{activeTab === 'ai' && (
+  <div className="bg-gray-800 p-6 rounded-2xl">
+    <div className="flex justify-between items-center mb-6">
+      <div>
+        <h3 className="text-lg font-semibold">🤖 AI Financial Insight</h3>
+        <p className="text-gray-400 text-sm mt-1">Analisis keuangan lo oleh AI</p>
+      </div>
+      <button
+        onClick={fetchAIInsight}
+        disabled={aiLoading}
+        className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition disabled:opacity-50"
+      >
+        {aiLoading ? '⏳ Menganalisis...' : '✨ Generate Insight'}
+      </button>
+    </div>
+
+    {aiLoading && (
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4">🤔</div>
+        <p className="text-gray-400">AI lagi analisis keuangan lo...</p>
+        <p className="text-gray-500 text-sm mt-1">Biasanya 5-10 detik</p>
+      </div>
+    )}
+
+    {!aiLoading && aiInsight && (
+      <div className="bg-gray-700 p-6 rounded-xl">
+        <p className="text-gray-200 whitespace-pre-wrap leading-relaxed">{aiInsight}</p>
+      </div>
+    )}
+
+    {!aiLoading && !aiInsight && (
+      <div className="text-center py-12">
+        <div className="text-5xl mb-4">💡</div>
+        <p className="text-gray-400">Klik "Generate Insight" buat dapet analisis keuangan lo dari AI!</p>
+      </div>
+    )}
+  </div>
+)}
     </div>
   )
 }
