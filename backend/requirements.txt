@@ -3,6 +3,9 @@ uvicorn
 sqlalchemy
 pymysql
 python-dotenv
-passlib[bcrypt]
+argon2-cffi
 python-jose[cryptography]
 pydantic[email]
+httpx
+aiofiles
+cryptography
