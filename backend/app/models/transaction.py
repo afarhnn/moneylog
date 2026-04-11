@@ -14,7 +14,7 @@ class Transaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     judul = Column(String(100), nullable=False)
     nominal = Column(Float, nullable=False)
-    tipe = Column(Enum(TipeTransaksi), nullable=False)
+    tipe = Column(Enum(TipeTransaksi, native_enum=False), nullable=False)
     kategori = Column(String(50), nullable=False)
     catatan = Column(String(255), nullable=True)
     tanggal = Column(DateTime(timezone=True), server_default=func.now())

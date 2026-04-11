@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { login } from '../services/api'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,56 +28,150 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="bg-gray-800 p-8 rounded-2xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-white mb-2">MoneyLog 💰</h1>
-        <p className="text-gray-400 mb-6">Login ke akun kamu</p>
+    <div style={{
+      minHeight: '100vh',
+      background: theme === 'dark'
+        ? 'linear-gradient(135deg, #000000 0%, #1a1a2e 50%, #16213e 100%)'
+        : 'linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 50%, #f0f0f5 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px'
+    }}>
+      {/* Theme Toggle */}
+      <motion.button
+        onClick={toggleTheme}
+        whileTap={{ scale: 0.9 }}
+        style={{
+          position: 'fixed', top: 24, right: 24,
+          background: 'var(--bg-glass)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid var(--border)',
+          borderRadius: '50%', width: 44, height: 44,
+          cursor: 'pointer', fontSize: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </motion.button>
 
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="glass"
+        style={{
+          borderRadius: 24, padding: '48px 40px',
+          width: '100%', maxWidth: 420
+        }}
+      >
+        {/* Logo */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          style={{ textAlign: 'center', marginBottom: 32 }}
+        >
+          <div style={{
+            fontSize: 48, marginBottom: 12,
+            filter: 'drop-shadow(0 4px 12px rgba(99,102,241,0.4))'
+          }}>💰</div>
+          <h1 style={{
+            fontSize: 28, fontWeight: 700,
+            color: 'var(--text-primary)', letterSpacing: '-0.5px'
+          }}>MoneyLog</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 15 }}>
+            Kelola keuangan dengan cerdas
+          </p>
+        </motion.div>
+
+        {/* Error */}
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            style={{
+              background: 'rgba(248,113,113,0.1)',
+              border: '1px solid rgba(248,113,113,0.3)',
+              borderRadius: 12, padding: '12px 16px',
+              color: '#f87171', marginBottom: 20, fontSize: 14
+            }}
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Email</label>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+              Email
+            </label>
             <input
               type="email"
               placeholder="email@contoh.com"
               value={form.email}
               onChange={(e) => setForm({...form, email: e.target.value})}
-              className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
+              style={{
+                width: '100%', padding: '14px 16px',
+                background: 'var(--bg-glass-dark)',
+                border: '1px solid var(--border)',
+                borderRadius: 12, fontSize: 15,
+                color: 'var(--text-primary)'
+              }}
             />
           </div>
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Password</label>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+              Password
+            </label>
             <input
               type="password"
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => setForm({...form, password: e.target.value})}
-              className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
+              style={{
+                width: '100%', padding: '14px 16px',
+                background: 'var(--bg-glass-dark)',
+                border: '1px solid var(--border)',
+                borderRadius: 12, fontSize: 15,
+                color: 'var(--text-primary)'
+              }}
             />
           </div>
-          <button
+
+          <motion.button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{
+              width: '100%', padding: '15px',
+              background: 'linear-gradient(135deg, #6366f1, #818cf8)',
+              border: 'none', borderRadius: 12,
+              color: 'white', fontSize: 16,
+              fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
+              marginTop: 8
+            }}
           >
-            {loading ? 'Loading...' : 'Login'}
-          </button>
+            {loading ? '⏳ Masuk...' : 'Masuk'}
+          </motion.button>
         </form>
 
-        <p className="text-gray-400 text-center mt-4">
+        <p style={{
+          textAlign: 'center', marginTop: 24,
+          color: 'var(--text-secondary)', fontSize: 14
+        }}>
           Belum punya akun?{' '}
-          <Link to="/register" className="text-purple-400 hover:underline">
+          <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
             Daftar di sini
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   )
 }
