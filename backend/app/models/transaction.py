@@ -2,6 +2,9 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enu
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
+import os
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 class TipeTransaksi(enum.Enum):
     pemasukan = "pemasukan"
