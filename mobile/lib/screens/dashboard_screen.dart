@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api.dart';
-import '../models/transaction.dart';
+import '../widgets/bottom_nav.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -11,16 +11,10 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  List<Transaction> transactions = [];
+  List<Map<String, dynamic>> transactions = [];
   bool loading = true;
   String nama = '';
-  bool showForm = false;
-
-  final judulController = TextEditingController();
-  final nominalController = TextEditingController();
-  final kategoriController = TextEditingController();
-  final catatanController = TextEditingController();
-  String tipe = 'pengeluaran';
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -44,282 +38,215 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  void handleTambah() async {
-    if (judulController.text.isEmpty || nominalController.text.isEmpty || kategoriController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Judul, nominal, dan kategori wajib diisi!')));
-      return;
-    }
-    final success = await createTransaction({
-      'judul': judulController.text,
-      'nominal': double.parse(nominalController.text),
-      'tipe': tipe,
-      'kategori': kategoriController.text,
-      'catatan': catatanController.text,
-    });
-    if (success) {
-      judulController.clear();
-      nominalController.clear();
-      kategoriController.clear();
-      catatanController.clear();
-      setState(() { showForm = false; });
-      loadData();
+  void _onNavTap(int index) {
+    setState(() => _currentIndex = index);
+    switch (index) {
+      case 0: break;
+      case 1: Navigator.pushReplacementNamed(context, '/transaksi'); break;
+      case 2: Navigator.pushReplacementNamed(context, '/budget'); break;
+      case 3: Navigator.pushReplacementNamed(context, '/ai'); break;
     }
   }
 
-  void handleDelete(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1F2937),
-        title: const Text('Hapus Transaksi', style: TextStyle(color: Colors.white)),
-        content: const Text('Yakin mau hapus transaksi ini?', style: TextStyle(color: Colors.grey)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey))),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await deleteTransaction(id);
-      loadData();
-    }
-  }
-
-  String formatRupiah(double nominal) {
-    return 'Rp${nominal.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  String formatRupiah(dynamic nominal) {
+    final num = double.tryParse(nominal.toString()) ?? 0;
+    return 'Rp${num.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   @override
   Widget build(BuildContext context) {
     final totalPemasukan = transactions
-      .where((t) => t.tipe == 'pemasukan')
-      .fold(0.0, (sum, t) => sum + t.nominal);
+        .where((t) => t['tipe'] == 'pemasukan')
+        .fold(0.0, (sum, t) => sum + (double.tryParse(t['nominal'].toString()) ?? 0));
     final totalPengeluaran = transactions
-      .where((t) => t.tipe == 'pengeluaran')
-      .fold(0.0, (sum, t) => sum + t.nominal);
+        .where((t) => t['tipe'] == 'pengeluaran')
+        .fold(0.0, (sum, t) => sum + (double.tryParse(t['nominal'].toString()) ?? 0));
     final saldo = totalPemasukan - totalPengeluaran;
+    final recent = transactions.reversed.take(5).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF111827),
+      backgroundColor: const Color(0xFF0A0A0F),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1F2937),
-        title: const Text('MoneyLog 💰',
-          style: TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF1C1C2E),
+        title: Row(
+          children: [
+            const Text('💰', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            const Text('MoneyLog',
+              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 18)),
+          ],
+        ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: TextButton(
-              onPressed: handleLogout,
-              child: const Text('Logout', style: TextStyle(color: Colors.red)),
-            ),
+          TextButton(
+            onPressed: handleLogout,
+            child: const Text('Logout', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
           )
         ],
+        elevation: 0,
       ),
       body: loading
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C3AED)))
-        : RefreshIndicator(
-            onRefresh: () async => loadData(),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Greeting
-                  Text('Halo, $nama! 👋',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+          : RefreshIndicator(
+              onRefresh: () async => loadData(),
+              color: const Color(0xFF6366F1),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Greeting
+                    Text('Halo, $nama! 👋',
+                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text('Berikut ringkasan keuangan kamu',
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                    const SizedBox(height: 20),
 
-                  // Summary Cards
-                  Row(children: [
-                    Expanded(child: _summaryCard('Saldo', saldo, saldo >= 0 ? Colors.green : Colors.red)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _summaryCard('Pemasukan', totalPemasukan, Colors.green)),
-                  ]),
-                  const SizedBox(height: 8),
-                  _summaryCard('Pengeluaran', totalPengeluaran, Colors.red),
-                  const SizedBox(height: 20),
-
-                  // Tombol tambah
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Transaksi',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                      ElevatedButton(
-                        onPressed: () => setState(() => showForm = !showForm),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C3AED),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                        child: Text(showForm ? 'Batal' : '+ Tambah',
-                          style: const TextStyle(color: Colors.white)),
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Form tambah
-                  if (showForm) _buildForm(),
-
-                  // List transaksi
-                  if (transactions.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Text('Belum ada transaksi',
-                          style: TextStyle(color: Colors.grey)),
+                    // Saldo Card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.3),
+                            blurRadius: 20, offset: const Offset(0, 8),
+                          )
+                        ],
                       ),
-                    )
-                  else
-                    ...transactions.map((t) => _transactionCard(t)),
-                ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Total Saldo',
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13)),
+                          const SizedBox(height: 8),
+                          Text(formatRupiah(saldo),
+                            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(child: _miniCard('📈 Pemasukan', formatRupiah(totalPemasukan), Colors.greenAccent)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _miniCard('📉 Pengeluaran', formatRupiah(totalPengeluaran), Colors.redAccent)),
+                            ],
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Recent Transactions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Transaksi Terbaru',
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                        TextButton(
+                          onPressed: () => Navigator.pushReplacementNamed(context, '/transaksi'),
+                          child: const Text('Lihat semua →',
+                            style: TextStyle(color: Color(0xFF6366F1), fontSize: 12)),
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    recent.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                children: [
+                                  const Text('📭', style: TextStyle(fontSize: 48)),
+                                  const SizedBox(height: 8),
+                                  Text('Belum ada transaksi',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.4))),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: recent.map((t) => _transactionTile(t)).toList(),
+                          ),
+                  ],
+                ),
               ),
             ),
-          ),
-    );
-  }
-
-  Widget _summaryCard(String label, double value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(formatRupiah(value),
-            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
+      bottomNavigationBar: MoneyLogBottomNav(
+        currentIndex: _currentIndex,
+        onTap: _onNavTap,
       ),
     );
   }
 
-  Widget _buildForm() {
+  Widget _miniCard(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF7C3AED).withOpacity(0.3))),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Transaksi Baru',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          _inputField(judulController, 'Judul', 'Contoh: Beli makan'),
-          const SizedBox(height: 10),
-          _inputField(nominalController, 'Nominal', '25000', isNumber: true),
-          const SizedBox(height: 10),
-          // Tipe dropdown
-          DropdownButtonFormField<String>(
-            initialValue: tipe,
-            dropdownColor: const Color(0xFF1F2937),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Tipe',
-              labelStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: const Color(0xFF111827),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none)),
-            items: ['pengeluaran', 'pemasukan'].map((t) =>
-              DropdownMenuItem(value: t, child: Text(t))).toList(),
-            onChanged: (val) => setState(() => tipe = val!),
-          ),
-          const SizedBox(height: 10),
-          _inputField(kategoriController, 'Kategori', 'Contoh: makanan'),
-          const SizedBox(height: 10),
-          _inputField(catatanController, 'Catatan (opsional)', 'Catatan tambahan...'),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: handleTambah,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              child: const Text('Simpan', style: TextStyle(color: Colors.white)),
-            ),
-          )
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 
-  Widget _inputField(TextEditingController controller, String label, String hint, {bool isNumber = false}) {
-    return TextField(
-      controller: controller,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.grey),
-        filled: true,
-        fillColor: const Color(0xFF111827),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none)),
-    );
-  }
-
-  Widget _transactionCard(Transaction t) {
-    final ispemasukan = t.tipe == 'pemasukan';
+  Widget _transactionTile(Map<String, dynamic> t) {
+    final isPemasukan = t['tipe'] == 'pemasukan';
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1F2937),
-        borderRadius: BorderRadius.circular(12)),
+        color: const Color(0xFF1C1C2E),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
       child: Row(
         children: [
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: ispemasukan ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8)),
-            child: Icon(
-              ispemasukan ? Icons.arrow_downward : Icons.arrow_upward,
-              color: ispemasukan ? Colors.green : Colors.red, size: 20),
+              color: isPemasukan
+                  ? Colors.greenAccent.withOpacity(0.15)
+                  : Colors.redAccent.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(isPemasukan ? '📈' : '📉',
+                style: const TextStyle(fontSize: 18)),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.judul,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text('${t.kategori} • ${t.tanggal.day}/${t.tanggal.month}/${t.tanggal.year}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(t['judul'] ?? '',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('${t['kategori']} • ${t['tanggal']?.toString().substring(0, 10) ?? ''}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${ispemasukan ? '+' : '-'}${formatRupiah(t.nominal)}',
-                style: TextStyle(
-                  color: ispemasukan ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold)),
-              GestureDetector(
-                onTap: () => handleDelete(t.id),
-                child: const Text('hapus',
-                  style: TextStyle(color: Colors.grey, fontSize: 11))),
-            ],
-          )
+          Text(
+            '${isPemasukan ? '+' : '-'}${formatRupiah(t['nominal'])}',
+            style: TextStyle(
+              color: isPemasukan ? Colors.greenAccent : Colors.redAccent,
+              fontWeight: FontWeight.w700, fontSize: 13,
+            ),
+          ),
         ],
       ),
     );

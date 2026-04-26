@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer
-from app.routers import auth, transactions, ai
+from app.routers import auth, transactions, ai, budget, laporan
 from app.database import engine, Base
 import traceback
 import os
@@ -37,12 +37,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
-# Daftarin API routes
 app.include_router(auth.router)
 app.include_router(transactions.router)
 app.include_router(ai.router)
+app.include_router(budget.router)
+app.include_router(laporan.router)
 
-# Serve static files React
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
 if os.path.exists(frontend_dist):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
@@ -53,12 +53,10 @@ if os.path.exists(frontend_dist):
 
     @app.get("/{full_path:path}")
     async def catch_all(full_path: str):
-        # Kalau path adalah API, skip
-        if full_path.startswith("api/") or full_path.startswith("auth/") or full_path.startswith("transactions/") or full_path.startswith("ai/"):
+        if full_path.startswith(("auth/", "transactions/", "ai/", "budgets/", "laporan/")):
             return JSONResponse(status_code=404, content={"detail": "Not found"})
-        # Serve index.html untuk semua route React
         return FileResponse(os.path.join(frontend_dist, "index.html"))
 else:
     @app.get("/")
     def root():
-        return {"message": "Welcome to MoneyLog API 🚀 — Frontend not built yet"}
+        return {"message": "Welcome to MoneyLog API 🚀"}

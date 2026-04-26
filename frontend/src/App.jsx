@@ -6,6 +6,8 @@ import Transaksi from './pages/Transaksi'
 import Grafik from './pages/Grafik'
 import AIInsight from './pages/AIInsight'
 import Budget from './pages/Budget'
+import Laporan from './pages/Laporan'
+
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token')
@@ -24,6 +26,7 @@ export default function App() {
         <Route path="/grafik" element={<PrivateRoute><Grafik /></PrivateRoute>} />
         <Route path="/ai" element={<PrivateRoute><AIInsight /></PrivateRoute>} />
         <Route path="/budget" element={<PrivateRoute><Budget /></PrivateRoute>} />
+        <Route path="/laporan" element={<PrivateRoute><Laporan /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   )

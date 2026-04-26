@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: moneylog_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: moneylog123
+      MYSQL_DATABASE: moneylog
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: moneylog_backend
+    restart: always
+    environment:
+      DATABASE_URL: mysql+pymysql://root:moneylog123@db:3306/moneylog
+      SECRET_KEY: moneylog-secret-key-2024
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      ENVIRONMENT: production
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: moneylog_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  mobile:
+    build: ./mobile
+    container_name: moneylog_mobile
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

@@ -8,6 +8,7 @@ const menuItems = [
   { id: 'grafik', label: 'Grafik', icon: '📈', path: '/grafik' },
   { id: 'ai', label: 'AI Insight', icon: '🤖', path: '/ai' },
   { id: 'budget', label: 'Budget', icon: '🎯', path: '/budget' },
+  { id: 'laporan', label: 'Laporan', icon: '📅', path: '/laporan' },
 ]
 
 export default function Sidebar() {

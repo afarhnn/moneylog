@@ -1,62 +1,61 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getTransactions } from '../services/api'
+import { getBudgets, createBudget, deleteBudget } from '../services/api'
 import Layout from '../components/Layout'
 
 export default function Budget() {
   const navigate = useNavigate()
-  const [transactions, setTransactions] = useState([])
-  const [budgets, setBudgets] = useState(() => {
-    const saved = localStorage.getItem('budgets')
-    return saved ? JSON.parse(saved) : []
-  })
+  const [budgets, setBudgets] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ kategori: '', limit: '' })
+  const [form, setForm] = useState({ kategori: '', limit_nominal: '' })
 
-  useEffect(() => { fetchTransactions() }, [])
+  useEffect(() => { fetchBudgets() }, [])
 
-  const fetchTransactions = async () => {
+  const fetchBudgets = async () => {
     try {
-      const res = await getTransactions()
-      setTransactions(res.data)
+      const res = await getBudgets()
+      setBudgets(res.data)
     } catch { navigate('/login') }
+    finally { setLoading(false) }
   }
 
-  const saveBudget = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const existing = budgets.find(b => b.kategori.toLowerCase() === form.kategori.toLowerCase())
-    let newBudgets
-    if (existing) {
-      newBudgets = budgets.map(b =>
-        b.kategori.toLowerCase() === form.kategori.toLowerCase()
-          ? { ...b, limit: parseFloat(form.limit) }
-          : b
-      )
-    } else {
-      newBudgets = [...budgets, { kategori: form.kategori, limit: parseFloat(form.limit) }]
-    }
-    setBudgets(newBudgets)
-    localStorage.setItem('budgets', JSON.stringify(newBudgets))
-    setForm({ kategori: '', limit: '' })
-    setShowForm(false)
+    try {
+      await createBudget({ kategori: form.kategori, limit_nominal: parseFloat(form.limit_nominal) })
+      setForm({ kategori: '', limit_nominal: '' })
+      setShowForm(false)
+      fetchBudgets()
+    } catch { alert('Gagal simpan budget') }
   }
 
-  const deleteBudget = (kategori) => {
-    const newBudgets = budgets.filter(b => b.kategori !== kategori)
-    setBudgets(newBudgets)
-    localStorage.setItem('budgets', JSON.stringify(newBudgets))
-  }
-
-  const getPengeluaranKategori = (kategori) => {
-    return transactions
-      .filter(t => t.tipe === 'pengeluaran' && t.kategori.toLowerCase() === kategori.toLowerCase())
-      .reduce((s, t) => s + t.nominal, 0)
+  const handleDelete = async (id) => {
+    if (!confirm('Hapus budget ini?')) return
+    try { await deleteBudget(id); fetchBudgets() }
+    catch { alert('Gagal hapus budget') }
   }
 
   const formatRupiah = (num) => new Intl.NumberFormat('id-ID', {
     style: 'currency', currency: 'IDR', minimumFractionDigits: 0
   }).format(num)
+
+  const getStatusColor = (status) => {
+    if (status === 'danger') return '#f87171'
+    if (status === 'warning') return '#f59e0b'
+    return '#10b981'
+  }
+
+  const getStatusLabel = (status) => {
+    if (status === 'danger') return '🚨 Melebihi Budget!'
+    if (status === 'warning') return '⚠️ Hampir Habis'
+    return '✅ Aman'
+  }
+
+  const totalBudget = budgets.reduce((s, b) => s + b.limit_nominal, 0)
+  const totalTerpakai = budgets.reduce((s, b) => s + b.terpakai, 0)
+  const totalSisa = totalBudget - totalTerpakai
 
   const glassCard = {
     background: 'var(--bg-glass)',
@@ -73,23 +72,6 @@ export default function Budget() {
     borderRadius: 12, fontSize: 14,
     color: 'var(--text-primary)'
   }
-
-  const getStatusColor = (persen) => {
-    if (persen >= 100) return '#f87171'
-    if (persen >= 75) return '#f59e0b'
-    return '#10b981'
-  }
-
-  const getStatusLabel = (persen) => {
-    if (persen >= 100) return '🚨 Melebihi Budget!'
-    if (persen >= 75) return '⚠️ Hampir Habis'
-    return '✅ Aman'
-  }
-
-  // Summary
-  const totalBudget = budgets.reduce((s, b) => s + b.limit, 0)
-  const totalTerpakai = budgets.reduce((s, b) => s + getPengeluaranKategori(b.kategori), 0)
-  const totalSisa = totalBudget - totalTerpakai
 
   return (
     <Layout>
@@ -157,7 +139,7 @@ export default function Budget() {
             <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
               🎯 Set Budget Baru
             </h3>
-            <form onSubmit={saveBudget}>
+            <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
@@ -176,8 +158,8 @@ export default function Budget() {
                   </label>
                   <input
                     type="number" placeholder="500000"
-                    value={form.limit}
-                    onChange={(e) => setForm({...form, limit: e.target.value})}
+                    value={form.limit_nominal}
+                    onChange={(e) => setForm({...form, limit_nominal: e.target.value})}
                     style={inputStyle} required
                   />
                 </div>
@@ -191,9 +173,7 @@ export default function Budget() {
                     color: 'white', fontWeight: 600, cursor: 'pointer',
                     boxShadow: '0 4px 15px rgba(99,102,241,0.3)'
                   }}
-                >
-                  ✓ Simpan Budget
-                </motion.button>
+                >✓ Simpan Budget</motion.button>
                 <motion.button
                   type="button" whileTap={{ scale: 0.98 }}
                   onClick={() => setShowForm(false)}
@@ -203,9 +183,7 @@ export default function Budget() {
                     background: 'var(--bg-glass-dark)',
                     color: 'var(--text-secondary)', cursor: 'pointer'
                   }}
-                >
-                  Batal
-                </motion.button>
+                >Batal</motion.button>
               </div>
             </form>
           </motion.div>
@@ -213,7 +191,12 @@ export default function Budget() {
       </AnimatePresence>
 
       {/* Budget List */}
-      {budgets.length === 0 ? (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 80 }}>
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+            style={{ fontSize: 36, display: 'inline-block' }}>⏳</motion.div>
+        </div>
+      ) : budgets.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -235,20 +218,15 @@ export default function Budget() {
               color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600,
               boxShadow: '0 4px 20px rgba(99,102,241,0.4)'
             }}
-          >
-            + Set Budget Pertama
-          </motion.button>
+          >+ Set Budget Pertama</motion.button>
         </motion.div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {budgets.map((budget, i) => {
-            const terpakai = getPengeluaranKategori(budget.kategori)
-            const persen = Math.min((terpakai / budget.limit) * 100, 100)
-            const statusColor = getStatusColor(persen)
-
+            const statusColor = getStatusColor(budget.status)
             return (
               <motion.div
-                key={budget.kategori}
+                key={budget.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
@@ -263,22 +241,22 @@ export default function Budget() {
                       </h3>
                       <span style={{
                         fontSize: 11, padding: '2px 8px', borderRadius: 100,
-                        background: persen >= 100 ? 'rgba(248,113,113,0.15)' : persen >= 75 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
+                        background: budget.status === 'danger' ? 'rgba(248,113,113,0.15)' : budget.status === 'warning' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
                         color: statusColor, fontWeight: 500
                       }}>
-                        {getStatusLabel(persen)}
+                        {getStatusLabel(budget.status)}
                       </span>
                     </div>
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {formatRupiah(terpakai)} dari {formatRupiah(budget.limit)}
+                      {formatRupiah(budget.terpakai)} dari {formatRupiah(budget.limit_nominal)}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 20, fontWeight: 700, color: statusColor }}>
-                      {persen.toFixed(0)}%
+                      {budget.persen.toFixed(0)}%
                     </span>
                     <motion.button
-                      onClick={() => deleteBudget(budget.kategori)}
+                      onClick={() => handleDelete(budget.id)}
                       whileTap={{ scale: 0.9 }}
                       style={{
                         background: 'rgba(248,113,113,0.1)',
@@ -292,19 +270,16 @@ export default function Budget() {
                 </div>
 
                 {/* Progress Bar */}
-                <div style={{
-                  height: 8, background: 'var(--bg-glass-dark)',
-                  borderRadius: 100, overflow: 'hidden'
-                }}>
+                <div style={{ height: 8, background: 'var(--bg-glass-dark)', borderRadius: 100, overflow: 'hidden' }}>
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${persen}%` }}
+                    animate={{ width: `${budget.persen}%` }}
                     transition={{ duration: 0.8, ease: 'easeOut', delay: i * 0.1 }}
                     style={{
                       height: '100%', borderRadius: 100,
-                      background: persen >= 100
+                      background: budget.status === 'danger'
                         ? 'linear-gradient(90deg, #f87171, #ef4444)'
-                        : persen >= 75
+                        : budget.status === 'warning'
                         ? 'linear-gradient(90deg, #f59e0b, #d97706)'
                         : 'linear-gradient(90deg, #10b981, #059669)'
                     }}
@@ -314,7 +289,7 @@ export default function Budget() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Terpakai</span>
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                    Sisa: {formatRupiah(Math.max(budget.limit - terpakai, 0))}
+                    Sisa: {formatRupiah(budget.sisa)}
                   </span>
                 </div>
               </motion.div>
