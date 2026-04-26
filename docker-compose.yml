@@ -16,7 +16,7 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    build: ./apps/backend
     container_name: moneylog_backend
     restart: always
     environment:
@@ -33,7 +33,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build: ./apps/web
     container_name: moneylog_frontend
     restart: always
     ports:
@@ -42,7 +42,7 @@ services:
       - backend
 
   mobile:
-    build: ./mobile
+    build: ./apps/mobile
     container_name: moneylog_mobile
     restart: always
     ports:
